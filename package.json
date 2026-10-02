@@ -1,0 +1,25 @@
+{
+  "name": "phone-farm-control",
+  "version": "1.0.0",
+  "description": "Bảng điều khiển nhiều điện thoại Android ảo (Redroid/emulator) qua ADB",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Minhooot/app-marketing.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Minhooot/app-marketing/issues"
+  },
+  "homepage": "https://github.com/Minhooot/app-marketing#readme",
+  "dependencies": {
+    "express": "^4.22.3"
+  },
+  "private": true
+}

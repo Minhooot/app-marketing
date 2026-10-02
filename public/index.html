@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone Farm Control</title>
+<style>
+  :root { --bg:#0f1115; --panel:#181b22; --line:#2a2f3a; --text:#e6e8ee; --muted:#8a91a0; --accent:#4f8cff; --ok:#2fbf71; --err:#ef5a5a; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  header { display:flex; gap:12px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0 12px 0 0; }
+  main { display:grid; grid-template-columns: 300px 1fr; min-height: calc(100vh - 56px); }
+  aside { border-right:1px solid var(--line); padding:16px; display:flex; flex-direction:column; gap:16px; }
+  section h2 { font-size:12px; text-transform:uppercase; color:var(--muted); margin:0 0 8px; letter-spacing:.05em; }
+  input, button, textarea { font:inherit; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:7px 10px; }
+  input, textarea { width:100%; }
+  button { cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .row { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  .row > input { flex:1; min-width:0; }
+  #grid { padding:16px; display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap:14px; align-content:start; }
+  .dev { background:var(--panel); border:2px solid var(--line); border-radius:12px; padding:8px; }
+  .dev.sel { border-color:var(--accent); }
+  .dev header { padding:0 0 6px; border:0; gap:6px; font-size:12px; }
+  .dev img { width:100%; aspect-ratio:9/16; object-fit:contain; background:#000; border-radius:8px; display:block; cursor:crosshair; user-select:none; -webkit-user-drag:none; }
+  .state { font-size:11px; color:var(--muted); margin-left:auto; }
+  .state.device { color:var(--ok); }
+  #log { font:12px ui-monospace, monospace; color:var(--muted); max-height:180px; overflow:auto; white-space:pre-wrap; }
+  .hint { color:var(--muted); font-size:12px; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } aside { border-right:0; border-bottom:1px solid var(--line); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>📱 Phone Farm Control</h1>
+  <button id="refresh">Tải lại thiết bị</button>
+  <button id="selAll">Chọn tất cả</button>
+  <button id="selNone">Bỏ chọn</button>
+  <label><input type="checkbox" id="sync" checked style="width:auto"> Đồng bộ thao tác</label>
+  <span class="hint" id="count"></span>
+</header>
+<main>
+  <aside>
+    <section>
+      <h2>Kết nối máy ảo</h2>
+      <textarea id="addrs" rows="3" placeholder="127.0.0.1:5555&#10;127.0.0.1:5556"></textarea>
+      <div class="row"><button id="connect">Kết nối</button></div>
+    </section>
+    <section>
+      <h2>Phím</h2>
+      <div class="row" id="keys"></div>
+    </section>
+    <section>
+      <h2>Mở link trên trình duyệt</h2>
+      <div class="row"><input id="url" placeholder="https://..."><button data-go="url">Mở</button></div>
+    </section>
+    <section>
+      <h2>Gõ chữ</h2>
+      <div class="row"><input id="text" placeholder="Nội dung (không dấu)"><button data-go="text">Gõ</button></div>
+    </section>
+    <section>
+      <h2>App</h2>
+      <div class="row"><input id="pkg" placeholder="com.android.chrome"></div>
+      <div class="row"><button data-go="launch">Mở app</button><button data-go="stop">Tắt app</button></div>
+      <div class="row"><input type="file" id="apk" accept=".apk"><button id="install">Cài APK</button></div>
+    </section>
+    <section>
+      <h2>Nhật ký</h2>
+      <div id="log"></div>
+    </section>
+  </aside>
+  <div id="grid"></div>
+</main>
+<script>
+const qs = new URLSearchParams(location.search);
+const token = qs.get('token') || '';
+const H = { 'content-type': 'application/json', 'x-panel-token': token };
+const selected = new Set();
+let devices = [];
+const $ = (id) => document.getElementById(id);
+
+function log(msg) { $('log').textContent = `[${new Date().toLocaleTimeString()}] ${msg}\n` + $('log').textContent; }
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { ...H, ...(opts.headers || {}) } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function report(label, results) {
+  const bad = results.filter((r) => !r.ok);
+  log(`${label}: ${results.length - bad.length}/${results.length} OK` + bad.map((r) => `\n  ✗ ${r.serial}: ${r.error}`).join(''));
+}
+
+// When sync is on, an action on one screen goes to every selected device.
+function targets(origin) {
+  if (origin && !$('sync').checked) return [origin];
+  if (origin && !selected.has(origin)) return [origin, ...selected];
+  return [...selected];
+}
+
+async function send(action, params, origin) {
+  const serials = targets(origin);
+  if (!serials.length) return log('Chưa chọn thiết bị nào');
+  try { report(action, (await api('/api/broadcast', { method: 'POST', body: JSON.stringify({ serials, action, params }) })).results); }
+  catch (e) { log(`${action}: ${e.message}`); }
+  setTimeout(refreshScreens, 600);
+}
+
+function render() {
+  $('grid').innerHTML = '';
+  for (const d of devices) {
+    const card = document.createElement('div');
+    card.className = 'dev' + (selected.has(d.serial) ? ' sel' : '');
+    card.innerHTML = `<header><input type="checkbox" style="width:auto" ${selected.has(d.serial) ? 'checked' : ''}>
+      <b></b><span class="state ${d.state}">${d.state}</span></header><img alt="">`;
+    card.querySelector('b').textContent = d.model ? `${d.model} · ${d.serial}` : d.serial;
+    card.querySelector('input').onchange = (e) => {
+      e.target.checked ? selected.add(d.serial) : selected.delete(d.serial);
+      card.classList.toggle('sel', e.target.checked); updateCount();
+    };
+    const img = card.querySelector('img');
+    img.dataset.serial = d.serial;
+    let start = null;
+    img.onmousedown = (e) => { start = { ...frac(e, img), t: Date.now() }; };
+    img.onmouseup = (e) => {
+      if (!start) return;
+      const end = frac(e, img);
+      const dist = Math.hypot(end.x - start.x, end.y - start.y);
+      if (dist < 0.02) send('tap', { x: end.x, y: end.y }, d.serial);
+      else send('swipe', { x1: start.x, y1: start.y, x2: end.x, y2: end.y, durationMs: Date.now() - start.t }, d.serial);
+      start = null;
+    };
+    $('grid').appendChild(card);
+  }
+  updateCount(); refreshScreens();
+}
+
+// Maps a click to 0..1 of the actual screenshot area (object-fit: contain adds letterboxing).
+function frac(e, img) {
+  const r = img.getBoundingClientRect();
+  const nw = img.naturalWidth || 9, nh = img.naturalHeight || 16;
+  const scale = Math.min(r.width / nw, r.height / nh);
+  const w = nw * scale, h = nh * scale;
+  return { x: (e.clientX - r.left - (r.width - w) / 2) / w, y: (e.clientY - r.top - (r.height - h) / 2) / h };
+}
+
+function updateCount() { $('count').textContent = `${selected.size}/${devices.length} thiết bị đang chọn`; }
+
+function refreshScreens() {
+  for (const img of document.querySelectorAll('img[data-serial]')) {
+    const d = devices.find((x) => x.serial === img.dataset.serial);
+    if (d?.state !== 'device') continue;
+    img.src = `/api/devices/${encodeURIComponent(d.serial)}/screen.png?token=${encodeURIComponent(token)}&t=${Date.now()}`;
+  }
+}
+
+async function loadDevices() {
+  try {
+    const data = await api('/api/devices');
+    devices = data.devices;
+    for (const s of [...selected]) if (!devices.some((d) => d.serial === s)) selected.delete(s);
+    $('keys').innerHTML = '';
+    for (const k of data.keys) {
+      const b = document.createElement('button'); b.textContent = k; b.onclick = () => send('key', { key: k });
+      $('keys').appendChild(b);
+    }
+    render();
+  } catch (e) { log(`Lỗi tải thiết bị: ${e.message}`); }
+}
+
+$('refresh').onclick = loadDevices;
+$('selAll').onclick = () => { devices.forEach((d) => d.state === 'device' && selected.add(d.serial)); render(); };
+$('selNone').onclick = () => { selected.clear(); render(); };
+$('connect').onclick = async () => {
+  const addresses = $('addrs').value.split(/\s+/).filter(Boolean);
+  try {
+    const { results } = await api('/api/devices/connect', { method: 'POST', body: JSON.stringify({ addresses }) });
+    results.forEach((r) => log(`${r.ok ? '✓' : '✗'} ${r.address}: ${r.message}`));
+  } catch (e) { log(e.message); }
+  loadDevices();
+};
+document.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => {
+  const go = b.dataset.go;
+  if (go === 'url') send('openUrl', { url: $('url').value });
+  if (go === 'text') send('text', { text: $('text').value });
+  if (go === 'launch') send('launchApp', { pkg: $('pkg').value.trim() });
+  if (go === 'stop') send('stopApp', { pkg: $('pkg').value.trim() });
+});
+$('install').onclick = async () => {
+  const file = $('apk').files[0];
+  if (!file) return log('Chọn file APK trước');
+  if (!selected.size) return log('Chưa chọn thiết bị nào');
+  log(`Đang cài ${file.name} lên ${selected.size} máy...`);
+  try {
+    const data = await api(`/api/install?serials=${encodeURIComponent([...selected].join(','))}`,
+      { method: 'POST', body: file, headers: { 'content-type': 'application/octet-stream' } });
+    report('install', data.results);
+  } catch (e) { log(`install: ${e.message}`); }
+};
+
+loadDevices();
+setInterval(refreshScreens, Number(qs.get('fps') ? 1000 / qs.get('fps') : 2000));
+</script>
+</body>
+</html>
