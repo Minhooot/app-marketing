@@ -61,6 +61,7 @@
 <header>
   <h1>📣 Quản lý kênh MXH</h1>
   <span class="muted">Dùng API chính chủ của Meta & TikTok</span>
+  <span id="demoBadge" class="st scheduled" style="display:none" title="Dữ liệu mẫu, không đăng thật">DEMO · dữ liệu mẫu</span>
   <a id="back" href="/">← Bảng điều khiển máy</a>
 </header>
 <main>
@@ -177,6 +178,7 @@ function updatePlatformForm() {
 async function loadChannels() {
   const data = await api('/channels');
   channels = data.channels;
+  $('demoBadge').style.display = data.demo ? '' : 'none';
   if (!$('chPlatform').options.length) {
     data.platforms.forEach((p) => $('chPlatform').append(h('option', { value: p }, NAMES[p])));
     updatePlatformForm();

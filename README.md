@@ -25,6 +25,17 @@ Bảng điều khiển web cho nhiều điện thoại Android ảo. Mỗi máy 
   - **Báo cáo 7 ngày**: tổng bài, tương tác, trung bình/bài, biểu đồ tương tác theo ngày, top 3 bài
   - **Mẫu caption** có chỗ trống `{sản phẩm}`, `{giá}`...: chọn mẫu là panel hỏi từng chỗ rồi điền vào bài
 
+## Chạy thử ngay (chế độ DEMO, không cần token)
+
+Cần cài [Node.js](https://nodejs.org/) bản LTS. Sau đó, trong thư mục code:
+
+```bash
+npm install
+npm run demo
+```
+
+Mở <http://localhost:8080/social.html>. Trang có nhãn **DEMO**: mọi lệnh gọi Facebook/Instagram/TikTok trả dữ liệu mẫu, không đăng thật lên đâu cả. Thêm kênh thì nhập ID và token bất kỳ. Dữ liệu demo lưu ở `state/db.json`, muốn làm lại từ đầu thì xóa file đó.
+
 ## Chạy nhanh
 
 Cần một server Linux (Ubuntu 22.04+ chẳng hạn) đã cài Docker và `adb` (`apt install adb`).

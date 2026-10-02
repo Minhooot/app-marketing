@@ -96,6 +96,11 @@ if (require.main === module) {
     console.error('Refusing to listen on a public interface without PANEL_TOKEN set.');
     process.exit(1);
   }
+  if (process.argv.includes('--demo')) process.env.DEMO = '1';
+  if (process.env.DEMO === '1') {
+    require('./demo').enableDemo();
+    console.log('DEMO mode: Meta/TikTok calls return sample data, nothing is posted for real.');
+  }
   const store = new Store();
   startScheduler(store);
 

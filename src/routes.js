@@ -43,7 +43,7 @@ function createRoutes(store, wrap) {
 
   // ---- Social channels (official APIs) ----
   r.get('/channels', (req, res) =>
-    res.json({ channels: store.list('channels').map(publicChannel), platforms: PLATFORMS }));
+    res.json({ channels: store.list('channels').map(publicChannel), platforms: PLATFORMS, demo: process.env.DEMO === '1' }));
 
   r.post('/channels', wrap(async (req, res) => {
     const platform = req.body.platform;
