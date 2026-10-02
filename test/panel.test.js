@@ -11,6 +11,7 @@ const FAKE = path.join(__dirname, 'fake-adb.js');
 fs.chmodSync(FAKE, 0o755);
 process.env.ADB_PATH = FAKE;
 process.env.FAKE_ADB_LOG = LOG;
+process.env.DB_FILE = path.join(path.dirname(LOG), 'db.json');
 
 const adb = require('../src/adb');
 const { broadcast, clearSizeCache } = require('../src/actions');

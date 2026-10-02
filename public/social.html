@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kênh MXH</title>
+<style>
+  :root { --bg:#0f1115; --panel:#181b22; --line:#2a2f3a; --text:#e6e8ee; --muted:#8a91a0; --accent:#4f8cff; --ok:#2fbf71; --warn:#e3a33b; --err:#ef5a5a; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  header { display:flex; gap:12px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; margin:0; }
+  header a { color:var(--accent); margin-left:auto; }
+  main { display:grid; grid-template-columns: minmax(320px, 420px) 1fr; gap:16px; padding:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:16px; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:0 0 10px; }
+  input, button, textarea, select { font:inherit; color:var(--text); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:7px 10px; }
+  input, textarea, select { width:100%; }
+  textarea { resize:vertical; }
+  button { cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  label { display:block; font-size:12px; color:var(--muted); margin:8px 0 3px; }
+  .row { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; align-items:center; }
+  .row > * { flex:1; }
+  .row > button { flex:0 0 auto; }
+  .chip { display:inline-flex; align-items:center; gap:6px; background:var(--bg); border:1px solid var(--line); border-radius:999px; padding:4px 10px; margin:0 6px 6px 0; font-size:13px; }
+  .chip input { width:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:500; }
+  td.num, th.num { text-align:right; font-variant-numeric: tabular-nums; }
+  .st { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+  .st.published { color:var(--ok); } .st.failed { color:var(--err); } .st.scheduled, .st.publishing { color:var(--warn); }
+  .muted { color:var(--muted); font-size:12px; }
+  .clip { max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #toast { position:fixed; bottom:16px; right:16px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 14px; display:none; max-width:420px; }
+  .comment { border-bottom:1px solid var(--line); padding:8px 0; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } .clip { max-width:180px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>📣 Quản lý kênh MXH</h1>
+  <span class="muted">Dùng API chính chủ của Meta & TikTok</span>
+  <a id="back" href="/">← Bảng điều khiển máy</a>
+</header>
+<main>
+  <div>
+    <div class="card">
+      <h2>Soạn bài</h2>
+      <div id="pickChannels" class="muted">Chưa có kênh nào, thêm kênh ở bên dưới.</div>
+      <label>Nội dung</label>
+      <textarea id="text" rows="5" placeholder="Caption / nội dung bài đăng"></textarea>
+      <label>Link (chỉ Facebook)</label>
+      <input id="link" placeholder="https://...">
+      <label>URL ảnh (FB/IG) hoặc video (TikTok), phải truy cập công khai được</label>
+      <input id="mediaUrl" placeholder="https://cdn.../anh.jpg">
+      <label>Quyền riêng tư TikTok</label>
+      <select id="privacy">
+        <option value="">Mặc định (SELF_ONLY nếu app chưa được duyệt)</option>
+        <option>PUBLIC_TO_EVERYONE</option><option>MUTUAL_FOLLOW_FRIENDS</option><option>FOLLOWER_OF_CREATOR</option><option>SELF_ONLY</option>
+      </select>
+      <label>Thời gian đăng (để trống = đăng ngay)</label>
+      <input id="when" type="datetime-local">
+      <div class="row"><button class="primary" id="submit">Lên lịch / Đăng</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Kênh đã kết nối</h2>
+      <div id="channels"></div>
+      <label>Nền tảng</label>
+      <select id="chPlatform"></select>
+      <label>Tên hiển thị</label>
+      <input id="chName" placeholder="Fanpage Shop ABC">
+      <div id="accWrap">
+        <label id="accLabel">Page ID</label>
+        <input id="chAccount">
+      </div>
+      <label>Access token</label>
+      <input id="chToken" type="password" autocomplete="off">
+      <div class="row"><button id="addChannel">Thêm kênh</button></div>
+      <p class="muted" id="tokenHint"></p>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Hàng đợi bài đăng</h2>
+      <table><thead><tr><th>Giờ đăng</th><th>Kênh</th><th>Nội dung</th><th>Trạng thái</th><th></th></tr></thead><tbody id="queue"></tbody></table>
+    </div>
+
+    <div class="card">
+      <h2>Hiệu quả bài gần đây</h2>
+      <div class="row"><select id="statsChannel"></select><button id="loadStats">Tải số liệu</button></div>
+      <table style="margin-top:10px"><thead><tr><th>Bài</th><th class="num">Xem</th><th class="num">Thích</th><th class="num">Bình luận</th><th class="num">Chia sẻ</th><th></th></tr></thead><tbody id="stats"></tbody></table>
+      <div id="commentsBox" style="margin-top:12px"></div>
+    </div>
+  </div>
+</main>
+<div id="toast"></div>
+<script>
+const token = new URLSearchParams(location.search).get('token') || '';
+const $ = (id) => document.getElementById(id);
+if (token) $('back').href += `?token=${encodeURIComponent(token)}`;
+
+const HINTS = {
+  facebook: ['Page ID', 'Page access token, quyền: pages_manage_posts, pages_read_engagement, pages_manage_engagement.'],
+  instagram: ['Instagram Business Account ID', 'Page access token của Page gắn với IG, quyền: instagram_basic, instagram_content_publish, instagram_manage_comments.'],
+  tiktok: [null, 'User access token từ TikTok Login Kit, scope: video.publish, video.list. TikTok chưa có API đọc/trả lời bình luận.'],
+};
+const NAMES = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok' };
+const STATUS = { scheduled: 'Chờ đăng', publishing: 'Đang đăng', published: 'Đã đăng', failed: 'Lỗi' };
+let channels = [];
+
+function toast(msg, isErr) {
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  t.style.borderColor = isErr ? 'var(--err)' : 'var(--line)';
+  clearTimeout(toast.t); toast.t = setTimeout(() => (t.style.display = 'none'), 5000);
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch('/api' + path, { ...opts, headers: { 'content-type': 'application/json', 'x-panel-token': token } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+// Builds DOM from [tag, props, ...children]; strings become text nodes (never HTML).
+function h(tag, props = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) k.startsWith('on') ? (el[k] = v) : k === 'class' ? (el.className = v) : el.setAttribute(k, v);
+  for (const k of kids.flat()) if (k !== null && k !== undefined) el.append(k instanceof Node ? k : String(k));
+  return el;
+}
+
+const fmt = (iso) => new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+const num = (n) => (n === null || n === undefined ? '—' : Number(n).toLocaleString('vi-VN'));
+const chName = (id) => { const c = channels.find((x) => x.id === id); return c ? `${NAMES[c.platform]} · ${c.name}` : '(đã xóa)'; };
+
+function updatePlatformForm() {
+  const [acc, hint] = HINTS[$('chPlatform').value];
+  $('accWrap').style.display = acc ? '' : 'none';
+  $('accLabel').textContent = acc || '';
+  $('tokenHint').textContent = hint;
+}
+
+async function loadChannels() {
+  const data = await api('/channels');
+  channels = data.channels;
+  if (!$('chPlatform').options.length) {
+    data.platforms.forEach((p) => $('chPlatform').append(h('option', { value: p }, NAMES[p])));
+    updatePlatformForm();
+  }
+  $('channels').replaceChildren(...(channels.length ? channels.map((c) =>
+    h('div', { class: 'row' },
+      h('span', {}, `${NAMES[c.platform]} · ${c.name}`, h('span', { class: 'muted' }, c.accountId !== 'me' ? `  #${c.accountId}` : '')),
+      h('button', { onclick: async () => {
+        if (!confirm(`Xóa kênh "${c.name}"?`)) return;
+        try { await api(`/channels/${c.id}`, { method: 'DELETE' }); refresh(); } catch (e) { toast(e.message, true); }
+      } }, 'Xóa'))) : [h('p', { class: 'muted' }, 'Chưa có kênh.')]));
+
+  $('pickChannels').replaceChildren(...(channels.length ? channels.map((c) =>
+    h('label', { class: 'chip' }, h('input', { type: 'checkbox', value: c.id }), `${NAMES[c.platform]} · ${c.name}`))
+    : ['Chưa có kênh nào, thêm kênh ở bên dưới.']));
+
+  const cur = $('statsChannel').value;
+  $('statsChannel').replaceChildren(...channels.map((c) => h('option', { value: c.id }, `${NAMES[c.platform]} · ${c.name}`)));
+  if (channels.some((c) => c.id === cur)) $('statsChannel').value = cur;
+}
+
+async function loadQueue() {
+  const { posts } = await api('/posts');
+  $('queue').replaceChildren(...(posts.length ? posts.map((p) => h('tr', {},
+    h('td', {}, fmt(p.scheduledAt)),
+    h('td', {}, chName(p.channelId)),
+    h('td', { class: 'clip', title: p.text }, p.text || p.link || p.mediaUrl),
+    h('td', {}, h('span', { class: `st ${p.status}`, title: p.error || '' }, STATUS[p.status] || p.status), p.error ? h('div', { class: 'muted' }, p.error) : null),
+    h('td', {},
+      p.status === 'failed' ? h('button', { onclick: () => act(`/posts/${p.id}/retry`, 'POST') }, 'Thử lại') : null,
+      p.status !== 'publishing' ? h('button', { onclick: () => confirm('Xóa bài khỏi hàng đợi?') && act(`/posts/${p.id}`, 'DELETE') }, 'Xóa') : null),
+  )) : [h('tr', {}, h('td', { colspan: 5, class: 'muted' }, 'Chưa có bài nào.'))]));
+}
+
+async function act(path, method) {
+  try { await api(path, { method }); await loadQueue(); } catch (e) { toast(e.message, true); }
+}
+
+async function loadStats() {
+  const id = $('statsChannel').value;
+  if (!id) return;
+  $('commentsBox').replaceChildren();
+  $('stats').replaceChildren(h('tr', {}, h('td', { colspan: 6, class: 'muted' }, 'Đang tải...')));
+  try {
+    const { posts } = await api(`/channels/${id}/posts`);
+    const canComment = channels.find((c) => c.id === id)?.platform !== 'tiktok';
+    $('stats').replaceChildren(...(posts.length ? posts.map((p) => h('tr', {},
+      h('td', { class: 'clip' }, h('a', { href: p.url, target: '_blank', rel: 'noopener', style: 'color:inherit' }, p.text || '(không có chữ)'), h('div', { class: 'muted' }, fmt(p.createdAt))),
+      h('td', { class: 'num' }, num(p.views)), h('td', { class: 'num' }, num(p.likes)),
+      h('td', { class: 'num' }, num(p.comments)), h('td', { class: 'num' }, num(p.shares)),
+      h('td', {}, canComment ? h('button', { onclick: () => loadComments(id, p) }, 'Bình luận') : null),
+    )) : [h('tr', {}, h('td', { colspan: 6, class: 'muted' }, 'Chưa có bài.'))]));
+  } catch (e) {
+    $('stats').replaceChildren(h('tr', {}, h('td', { colspan: 6, style: 'color:var(--err)' }, e.message)));
+  }
+}
+
+async function loadComments(channelId, post) {
+  const box = $('commentsBox');
+  box.replaceChildren(h('p', { class: 'muted' }, 'Đang tải bình luận...'));
+  try {
+    const { comments } = await api(`/channels/${channelId}/posts/${encodeURIComponent(post.id)}/comments`);
+    box.replaceChildren(h('h2', {}, `Bình luận: ${(post.text || '').slice(0, 60)}`),
+      ...(comments.length ? comments.map((c) => {
+        const input = h('input', { placeholder: 'Trả lời với tư cách trang...' });
+        return h('div', { class: 'comment' },
+          h('b', {}, c.author || 'Ẩn danh'), h('span', { class: 'muted' }, `  ${fmt(c.createdAt)}`),
+          h('div', {}, c.text),
+          h('div', { class: 'row' }, input, h('button', { onclick: async () => {
+            if (!input.value.trim()) return;
+            try {
+              await api(`/channels/${channelId}/comments/${encodeURIComponent(c.id)}/reply`, { method: 'POST', body: JSON.stringify({ message: input.value }) });
+              input.value = ''; toast('Đã trả lời');
+            } catch (e) { toast(e.message, true); }
+          } }, 'Trả lời')));
+      }) : [h('p', { class: 'muted' }, 'Chưa có bình luận.')]));
+  } catch (e) { box.replaceChildren(h('p', { style: 'color:var(--err)' }, e.message)); }
+}
+
+$('chPlatform').onchange = updatePlatformForm;
+$('addChannel').onclick = async () => {
+  try {
+    await api('/channels', { method: 'POST', body: JSON.stringify({
+      platform: $('chPlatform').value, name: $('chName').value, accountId: $('chAccount').value, token: $('chToken').value,
+    }) });
+    $('chName').value = $('chAccount').value = $('chToken').value = '';
+    toast('Đã thêm kênh'); refresh();
+  } catch (e) { toast(e.message, true); }
+};
+$('submit').onclick = async () => {
+  const channelIds = [...document.querySelectorAll('#pickChannels input:checked')].map((i) => i.value);
+  const when = $('when').value ? new Date($('when').value).toISOString() : undefined;
+  try {
+    const { posts } = await api('/posts', { method: 'POST', body: JSON.stringify({
+      channelIds, text: $('text').value, link: $('link').value, mediaUrl: $('mediaUrl').value,
+      privacy: $('privacy').value || undefined, scheduledAt: when,
+    }) });
+    toast(`Đã xếp ${posts.length} bài vào hàng đợi`);
+    $('text').value = $('link').value = $('mediaUrl').value = $('when').value = '';
+    loadQueue();
+  } catch (e) { toast(e.message, true); }
+};
+$('loadStats').onclick = loadStats;
+
+async function refresh() {
+  try { await loadChannels(); await loadQueue(); } catch (e) { toast(e.message, true); }
+}
+refresh();
+setInterval(loadQueue, 15000);
+</script>
+</body>
+</html>

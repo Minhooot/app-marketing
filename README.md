@@ -15,6 +15,12 @@ Bảng điều khiển web cho nhiều điện thoại Android ảo. Mỗi máy 
 - Phím Home, Back, Recents, Enter...; gõ chữ; mở link trên trình duyệt
 - Mở hoặc tắt app theo package; cài APK lên nhiều máy cùng lúc
 - Máy nào lỗi hay offline thì chỉ báo lỗi riêng máy đó, các máy khác vẫn chạy
+- **Nhóm máy**: lưu các máy đang chọn thành nhóm (theo team, theo chiến dịch...), chọn lại cả nhóm bằng 1 click
+- **Kênh MXH** (trang `/social.html`): quản lý Facebook Page, Instagram Business, TikTok qua **API chính chủ**
+  - Soạn 1 bài, đăng lên nhiều kênh, đăng ngay hoặc hẹn giờ
+  - Hàng đợi có trạng thái từng bài; bài lỗi bấm "Thử lại"
+  - Xem lượt thích, bình luận, chia sẻ (TikTok có thêm lượt xem) của 10 bài gần nhất
+  - Đọc và trả lời bình luận Facebook/Instagram ngay trên panel
 
 ## Chạy nhanh
 
@@ -68,6 +74,23 @@ HOST=0.0.0.0 PANEL_TOKEN=chuoi-bi-mat-dai npm start
 
 Nên đặt panel sau HTTPS (Nginx/Caddy) hoặc VPN. Cổng ADB 5555+ của các máy ảo chỉ bind vào `127.0.0.1`, **đừng** mở các cổng này ra internet.
 
+## Kết nối kênh MXH
+
+Token lấy từ app của anh trên [Meta for Developers](https://developers.facebook.com/) và [TikTok for Developers](https://developers.tiktok.com/):
+
+| Kênh | Cần nhập | Quyền (permission/scope) |
+|---|---|---|
+| Facebook Page | Page ID + Page access token | `pages_manage_posts`, `pages_read_engagement`, `pages_manage_engagement` |
+| Instagram | IG Business Account ID + Page access token của Page gắn với IG | `instagram_basic`, `instagram_content_publish`, `instagram_manage_comments` |
+| TikTok | User access token (Login Kit) | `video.publish`, `video.list` |
+
+Lưu ý:
+- Bài hẹn giờ do **panel tự đăng** khi tới giờ (kiểm tra mỗi 30 giây), nên server phải đang chạy. Nếu server tắt đúng lúc đang đăng, bài sẽ hiện "Lỗi" thay vì tự đăng lại, để tránh đăng trùng. Anh kiểm tra kênh rồi bấm "Thử lại".
+- Instagram bắt buộc phải có ảnh. Ảnh và video phải là URL công khai mà Meta/TikTok tải về được.
+- TikTok: video phải nằm trên domain đã xác minh trong TikTok for Developers. App chưa qua audit chỉ đăng được ở chế độ riêng tư (`SELF_ONLY`). API công khai của TikTok không cho đọc hay trả lời bình luận.
+- Token được lưu trong `state/db.json` (quyền file 600, đã nằm trong `.gitignore`). Không commit hay chia sẻ file này.
+- Page token lấy từ user token dài hạn thì không hết hạn; TikTok access token hết hạn sau khoảng 24 giờ, cần làm mới.
+
 ## Biến môi trường
 
 | Biến | Mặc định | Ý nghĩa |
@@ -77,6 +100,8 @@ Nên đặt panel sau HTTPS (Nginx/Caddy) hoặc VPN. Cổng ADB 5555+ của cá
 | `PANEL_TOKEN` | (trống) | Token bảo vệ API, bắt buộc khi `HOST` không phải localhost |
 | `ADB_PATH` | `adb` | Đường dẫn tới adb |
 | `ADB_TIMEOUT_MS` | `30000` | Timeout mỗi lệnh adb |
+| `DB_FILE` | `state/db.json` | File lưu nhóm, kênh, hàng đợi bài |
+| `META_GRAPH_VERSION` | `v24.0` | Phiên bản Graph API của Meta |
 
 ## Giới hạn đã biết và hướng nâng cấp
 
@@ -84,7 +109,6 @@ Nên đặt panel sau HTTPS (Nginx/Caddy) hoặc VPN. Cổng ADB 5555+ của cá
 - **Màn hình** hiện lấy bằng ảnh chụp định kỳ (`screencap`). Muốn mượt kiểu xem video thì nâng lên stream bằng scrcpy hoặc ws-scrcpy.
 - **Google Play**: xem mục "Có CH Play + Chrome" ở trên.
 - **Sức chứa**: RAM và CPU mỗi máy tùy app chạy bên trong; nên test với vài máy trước rồi mới nhân lên.
-- Kịch bản tự động (macro, lên lịch), quản lý proxy theo từng máy, nhóm máy: để cho các phiên bản sau.
 
 ## Test
 

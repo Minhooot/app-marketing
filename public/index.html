@@ -13,7 +13,7 @@
   main { display:grid; grid-template-columns: 300px 1fr; min-height: calc(100vh - 56px); }
   aside { border-right:1px solid var(--line); padding:16px; display:flex; flex-direction:column; gap:16px; }
   section h2 { font-size:12px; text-transform:uppercase; color:var(--muted); margin:0 0 8px; letter-spacing:.05em; }
-  input, button, textarea { font:inherit; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:7px 10px; }
+  input, button, textarea, select { font:inherit; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:7px 10px; }
   input, textarea { width:100%; }
   button { cursor:pointer; }
   button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
@@ -39,6 +39,10 @@
   <button id="selNone">Bỏ chọn</button>
   <label><input type="checkbox" id="sync" checked style="width:auto"> Đồng bộ thao tác</label>
   <span class="hint" id="count"></span>
+  <select id="groupSel"><option value="">— Nhóm máy —</option></select>
+  <button id="groupSave">Lưu nhóm từ máy đang chọn</button>
+  <button id="groupDel">Xóa nhóm</button>
+  <a href="social.html" id="socialLink" style="margin-left:auto;color:var(--accent)">📣 Kênh MXH →</a>
 </header>
 <main>
   <aside>
@@ -211,7 +215,48 @@ $('gsf').onclick = async () => {
   log('Dán từng ID vào https://www.google.com/android/uncertified rồi khởi động lại máy');
 };
 
-loadDevices();
+let groups = [];
+async function loadGroups() {
+  try {
+    groups = (await api('/api/groups')).groups;
+    const cur = $('groupSel').value;
+    $('groupSel').innerHTML = '<option value="">— Nhóm máy —</option>' +
+      groups.map((g) => `<option value="${g.id}">${g.name.replace(/[<&]/g, '')} (${g.serials.length})</option>`).join('');
+    $('groupSel').value = groups.some((g) => g.id === cur) ? cur : '';
+  } catch (e) { log(`Lỗi tải nhóm: ${e.message}`); }
+}
+$('groupSel').onchange = () => {
+  const g = groups.find((x) => x.id === $('groupSel').value);
+  if (!g) return;
+  selected.clear();
+  g.serials.forEach((s) => devices.some((d) => d.serial === s && d.state === 'device') && selected.add(s));
+  const missing = g.serials.length - selected.size;
+  log(`Chọn nhóm "${g.name}": ${selected.size} máy online` + (missing ? `, ${missing} máy offline/không thấy` : ''));
+  render();
+};
+$('groupSave').onclick = async () => {
+  if (!selected.size) return log('Chưa chọn thiết bị nào');
+  const cur = groups.find((x) => x.id === $('groupSel').value);
+  const name = prompt(cur ? `Cập nhật nhóm "${cur.name}" (đổi tên để tạo nhóm mới):` : 'Tên nhóm mới:', cur?.name || '');
+  if (!name) return;
+  try {
+    const body = JSON.stringify({ name, serials: [...selected] });
+    const g = cur && cur.name === name
+      ? await api(`/api/groups/${cur.id}`, { method: 'PUT', body })
+      : await api('/api/groups', { method: 'POST', body });
+    await loadGroups(); $('groupSel').value = g.id;
+    log(`Đã lưu nhóm "${g.name}" (${g.serials.length} máy)`);
+  } catch (e) { log(e.message); }
+};
+$('groupDel').onclick = async () => {
+  const g = groups.find((x) => x.id === $('groupSel').value);
+  if (!g || !confirm(`Xóa nhóm "${g.name}"? (Máy ảo không bị ảnh hưởng)`)) return;
+  try { await api(`/api/groups/${g.id}`, { method: 'DELETE' }); await loadGroups(); log(`Đã xóa nhóm "${g.name}"`); }
+  catch (e) { log(e.message); }
+};
+if (token) $('socialLink').href += `?token=${encodeURIComponent(token)}`;
+
+loadDevices().then(loadGroups);
 setInterval(refreshScreens, Number(qs.get('fps') ? 1000 / qs.get('fps') : 2000));
 </script>
 </body>

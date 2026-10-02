@@ -7,8 +7,11 @@ const crypto = require('node:crypto');
 const express = require('express');
 const adb = require('./adb');
 const { broadcast, KEYCODES } = require('./actions');
+const { Store } = require('./store');
+const { createRoutes } = require('./routes');
+const { startScheduler } = require('./scheduler');
 
-function createApp({ token = process.env.PANEL_TOKEN } = {}) {
+function createApp({ token = process.env.PANEL_TOKEN, store = new Store() } = {}) {
   const app = express();
   app.use(express.json({ limit: '1mb' }));
 
@@ -80,6 +83,8 @@ function createApp({ token = process.env.PANEL_TOKEN } = {}) {
     }),
   );
 
+  app.use('/api', createRoutes(store, wrap));
+
   app.use(express.static(path.join(__dirname, '..', 'public')));
   return app;
 }
@@ -91,7 +96,9 @@ if (require.main === module) {
     console.error('Refusing to listen on a public interface without PANEL_TOKEN set.');
     process.exit(1);
   }
-  createApp().listen(port, host, () => console.log(`Phone farm panel: http://${host}:${port}`));
+  const store = new Store();
+  startScheduler(store);
+  createApp({ store }).listen(port, host, () => console.log(`Phone farm panel: http://${host}:${port}`));
 }
 
 module.exports = { createApp };
