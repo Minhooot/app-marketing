@@ -28,6 +28,10 @@
   .state.device { color:var(--ok); }
   #log { font:12px ui-monospace, monospace; color:var(--muted); max-height:180px; overflow:auto; white-space:pre-wrap; }
   .hint { color:var(--muted); font-size:12px; }
+  .dev .zoom { padding:2px 6px; font-size:12px; }
+  #zoom { position:fixed; inset:0; background:rgba(0,0,0,.8); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; z-index:10; }
+  #zoom img { height:min(86vh, 1280px); max-width:94vw; object-fit:contain; background:#000; border-radius:12px; cursor:crosshair; user-select:none; }
+  .zoom-title { color:var(--muted); font-size:12px; }
   @media (max-width: 760px) { main { grid-template-columns: 1fr; } aside { border-right:0; border-bottom:1px solid var(--line); } }
 </style>
 </head>
@@ -61,7 +65,7 @@
     </section>
     <section>
       <h2>Gõ chữ</h2>
-      <div class="row"><input id="text" placeholder="Nội dung (không dấu)"><button data-go="text">Gõ</button></div>
+      <div class="row"><input id="text" placeholder="Nội dung (có dấu cần ADBKeyboard)"><button data-go="text">Gõ</button></div>
     </section>
     <section>
       <h2>App</h2>
@@ -120,7 +124,7 @@ function render() {
     const card = document.createElement('div');
     card.className = 'dev' + (selected.has(d.serial) ? ' sel' : '');
     card.innerHTML = `<header><input type="checkbox" style="width:auto" ${selected.has(d.serial) ? 'checked' : ''}>
-      <b></b><span class="state ${d.state}">${d.state}</span></header><img alt="">`;
+      <b></b><span class="state ${d.state}">${d.state}</span><button class="zoom" title="Phóng to">🔍</button></header><img alt="">`;
     card.querySelector('b').textContent = d.model ? `${d.model} · ${d.serial}` : d.serial;
     card.querySelector('input').onchange = (e) => {
       e.target.checked ? selected.add(d.serial) : selected.delete(d.serial);
@@ -128,19 +132,25 @@ function render() {
     };
     const img = card.querySelector('img');
     img.dataset.serial = d.serial;
-    let start = null;
-    img.onmousedown = (e) => { start = { ...frac(e, img), t: Date.now() }; };
-    img.onmouseup = (e) => {
-      if (!start) return;
-      const end = frac(e, img);
-      const dist = Math.hypot(end.x - start.x, end.y - start.y);
-      if (dist < 0.02) send('tap', { x: end.x, y: end.y }, d.serial);
-      else send('swipe', { x1: start.x, y1: start.y, x2: end.x, y2: end.y, durationMs: Date.now() - start.t }, d.serial);
-      start = null;
-    };
+    attachInput(img, d.serial);
+    card.querySelector('.zoom').onclick = () => openZoom(d);
     $('grid').appendChild(card);
   }
   updateCount(); refreshScreens();
+}
+
+// Click = tap, drag = swipe; works the same on grid tiles and the zoom view.
+function attachInput(img, serial) {
+  let start = null;
+  img.onmousedown = (e) => { e.preventDefault(); start = { ...frac(e, img), t: Date.now() }; };
+  img.onmouseup = (e) => {
+    if (!start) return;
+    const end = frac(e, img);
+    const dist = Math.hypot(end.x - start.x, end.y - start.y);
+    if (dist < 0.02) send('tap', { x: end.x, y: end.y }, serial);
+    else send('swipe', { x1: start.x, y1: start.y, x2: end.x, y2: end.y, durationMs: Date.now() - start.t }, serial);
+    start = null;
+  };
 }
 
 // Maps a click to 0..1 of the actual screenshot area (object-fit: contain adds letterboxing).
@@ -154,13 +164,56 @@ function frac(e, img) {
 
 function updateCount() { $('count').textContent = `${selected.size}/${devices.length} thiết bị đang chọn`; }
 
+// Requests a new frame only once the previous one has arrived, so 20+ phones
+// never pile up overlapping screencaps on the server.
+function loadFrame(img, serial) {
+  if (img.dataset.busy) return;
+  img.dataset.busy = '1';
+  img.onload = img.onerror = () => { delete img.dataset.busy; };
+  img.src = `/api/devices/${encodeURIComponent(serial)}/screen.png?token=${encodeURIComponent(token)}&t=${Date.now()}`;
+}
+
+function onScreen(el) {
+  const r = el.getBoundingClientRect();
+  return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+}
+
 function refreshScreens() {
-  for (const img of document.querySelectorAll('img[data-serial]')) {
+  if (document.hidden) return;
+  for (const img of document.querySelectorAll('#grid img[data-serial]')) {
     const d = devices.find((x) => x.serial === img.dataset.serial);
-    if (d?.state !== 'device') continue;
-    img.src = `/api/devices/${encodeURIComponent(d.serial)}/screen.png?token=${encodeURIComponent(token)}&t=${Date.now()}`;
+    // While zoomed, the grid pauses so the focused phone gets the bandwidth.
+    if (d?.state !== 'device' || zoomed || !onScreen(img)) continue;
+    loadFrame(img, d.serial);
   }
 }
+
+let zoomed = null;
+function openZoom(d) {
+  closeZoom();
+  const img = document.createElement('img');
+  img.alt = '';
+  attachInput(img, d.serial);
+  const title = document.createElement('div');
+  title.className = 'zoom-title';
+  title.textContent = `${d.model || ''} ${d.serial} · bấm Esc hoặc ra ngoài để đóng`;
+  const overlay = document.createElement('div');
+  overlay.id = 'zoom';
+  overlay.append(title, img);
+  overlay.onclick = (e) => { if (e.target === overlay) closeZoom(); };
+  document.body.appendChild(overlay);
+  const tick = () => loadFrame(img, d.serial);
+  zoomed = { overlay, timer: setInterval(tick, 300) };
+  tick();
+}
+function closeZoom() {
+  if (!zoomed) return;
+  clearInterval(zoomed.timer);
+  zoomed.overlay.remove();
+  zoomed = null;
+  refreshScreens();
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeZoom(); });
 
 async function loadDevices() {
   try {

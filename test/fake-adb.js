@@ -33,6 +33,12 @@ switch (rest[0]) {
     break;
   case 'shell':
     if (rest[1].startsWith('sqlite3')) process.stdout.write('3912345678901234567\n');
+    if (rest[1] === 'settings get secure default_input_method') {
+      process.stdout.write(serial === 'kb-active' ? 'com.android.adbkeyboard/.AdbIME\n' : 'com.android.inputmethod.latin/.LatinIME\n');
+    }
+    if (rest[1].startsWith('pm list packages')) {
+      process.stdout.write(serial === 'no-kb' ? '' : 'package:com.android.adbkeyboard\n');
+    }
     if (rest[1] === 'wm size') {
       process.stdout.write(serial === 'big-phone' ? 'Physical size: 1440x2560\nOverride size: 1080x1920\n' : 'Physical size: 720x1280\n');
     }

@@ -112,3 +112,21 @@ test('expandAddresses turns port ranges into addresses', () => {
   assert.deepStrictEqual(adb.expandAddresses(''), []);
   assert.throws(() => adb.expandAddresses('127.0.0.1:5574-5555'), /Invalid port range/);
 });
+
+test('Vietnamese text goes through ADBKeyboard, enabling it when needed', async () => {
+  await broadcast(['p1'], 'text', { text: 'Xin chào' });
+  const shellCmds = calls().map((c) => c[3]);
+  assert.deepStrictEqual(shellCmds.slice(-3), [
+    'ime enable com.android.adbkeyboard/.AdbIME',
+    'ime set com.android.adbkeyboard/.AdbIME',
+    `am broadcast -a ADB_INPUT_B64 --es msg '${Buffer.from('Xin chào').toString('base64')}'`,
+  ]);
+
+  fs.rmSync(LOG, { force: true });
+  await broadcast(['kb-active'], 'text', { text: 'Đẹp' });
+  assert.ok(!calls().some((c) => c[3].startsWith('ime ')), 'no IME switch when already active');
+
+  const [r] = await broadcast(['no-kb'], 'text', { text: 'Đẹp' });
+  assert.strictEqual(r.ok, false);
+  assert.match(r.error, /ADBKeyboard/);
+});
