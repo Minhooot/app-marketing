@@ -434,7 +434,8 @@ async function loadReport() {
         ...r.top.map((p, i) => h('div', { class: 'row' },
           h('span', { class: 'clip' }, `${i + 1}. `, h('a', { href: p.url, target: '_blank', rel: 'noopener', style: 'color:inherit' }, p.text || '(không có chữ)')),
           h('span', { class: 'muted', style: 'flex:0 0 auto' }, `${num(p.engagement)} tương tác`)))) : h('p', { class: 'muted' }, 'Tuần này chưa có bài nào.'),
-      r.truncated ? h('p', { class: 'muted' }, '⚠️ API chỉ trả về 25 bài gần nhất, nếu tuần này đăng nhiều hơn thì số liệu có thể thiếu.') : null,
+      // replaceChildren would print a literal "null", so only spread real nodes.
+      ...(r.truncated ? [h('p', { class: 'muted' }, '⚠️ API chỉ trả về 25 bài gần nhất, nếu tuần này đăng nhiều hơn thì số liệu có thể thiếu.')] : []),
     );
   } catch (e) { $('report').replaceChildren(h('p', { style: 'color:var(--err)' }, e.message)); }
 }
