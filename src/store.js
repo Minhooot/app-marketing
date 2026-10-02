@@ -4,8 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-const COLLECTIONS = ['groups', 'macros', 'channels', 'posts', 'runs'];
-const RUNS_KEPT = 200;
+const COLLECTIONS = ['groups', 'channels', 'posts', 'templates'];
 
 // Small JSON-file store. The panel is a single process, so an in-memory copy
 // flushed with an atomic rename is enough; no database to install.
@@ -18,7 +17,6 @@ class Store {
 
   save() {
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    this.data.runs = this.data.runs.slice(-RUNS_KEPT);
     const tmp = `${this.file}.${process.pid}.tmp`;
     // mode 600: the file holds social channel access tokens.
     fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2), { mode: 0o600 });

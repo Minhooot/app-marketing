@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { platformOf, publicChannel, PLATFORMS } = require('./social');
+const { buildReport } = require('./report');
 
 const str = (v, field, max = 5000) => {
   if (typeof v !== 'string' || !v.trim()) throw new Error(`${field} is required`);
@@ -80,6 +81,26 @@ function createRoutes(store, wrap) {
   r.post('/channels/:id/comments/:commentId/reply', wrap(async (req, res) => {
     const ch = channelOr404(req.params.id);
     res.json(await platformOf(ch).reply(ch, req.params.commentId, str(req.body.message, 'message', 8000)));
+  }));
+
+  r.get('/channels/:id/report', wrap(async (req, res) => {
+    const ch = channelOr404(req.params.id);
+    const days = Math.min(30, Math.max(1, Number(req.query.days) || 7));
+    const tzOffsetMin = Math.max(-840, Math.min(840, Number(req.query.tz) || 0));
+    const posts = await platformOf(ch).recentPosts(ch, 25);
+    res.json(buildReport(posts, { days, tzOffsetMin, fetchLimit: 25 }));
+  }));
+
+  // ---- Caption templates ----
+  r.get('/templates', (req, res) => res.json({ templates: store.list('templates') }));
+
+  r.post('/templates', wrap(async (req, res) => {
+    res.json(store.insert('templates', { name: str(req.body.name, 'name', 100), text: str(req.body.text, 'text', 5000) }));
+  }));
+
+  r.delete('/templates/:id', wrap(async (req, res) => {
+    store.remove('templates', req.params.id);
+    res.json({ ok: true });
   }));
 
   // ---- Post queue ----

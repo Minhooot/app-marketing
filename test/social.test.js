@@ -133,3 +133,52 @@ test('HTTP: groups, channels hide tokens, posts fan out per channel, comments re
   assert.strictEqual(reply.id, 'r1');
   assert.strictEqual(calls.at(-1).body.message, 'Dạ 199k ạ');
 });
+
+test('weekly report groups by local day (Vietnam time) and ranks top posts', () => {
+  const { buildReport } = require('../src/report');
+  const now = new Date('2026-10-07T10:00:00+07:00');
+  const posts = [
+    // 23:30 on Oct 6 in Vietnam is still Oct 6 locally even though it is 16:30Z.
+    { id: 'a', createdAt: '2026-10-06T23:30:00+07:00', likes: 100, comments: 20, shares: 5 },
+    { id: 'b', createdAt: '2026-10-07T08:00:00+07:00', likes: 10, comments: 1, shares: 0 },
+    { id: 'c', createdAt: '2026-10-01T09:00:00+07:00', likes: 40, comments: 0, shares: 0 },
+    { id: 'old', createdAt: '2026-09-20T09:00:00+07:00', likes: 999, comments: 0, shares: 0 },
+  ];
+  const r = buildReport(posts, { days: 7, tzOffsetMin: -420, now });
+  assert.strictEqual(r.from, '2026-10-01');
+  assert.strictEqual(r.to, '2026-10-07');
+  assert.deepStrictEqual(r.totals, { posts: 3, likes: 150, comments: 21, shares: 5, views: null, engagement: 176, avgEngagementPerPost: 59 });
+  const ig = buildReport([{ createdAt: now.toISOString(), likes: 5, comments: 1, shares: null }], { tzOffsetMin: -420, now });
+  assert.strictEqual(ig.totals.shares, null, 'Instagram has no share count');
+  assert.strictEqual(ig.truncated, false, 'fewer posts than the fetch limit means nothing is missing');
+  const full = Array.from({ length: 25 }, () => ({ createdAt: now.toISOString(), likes: 1 }));
+  assert.strictEqual(buildReport(full, { tzOffsetMin: -420, now }).truncated, true);
+  assert.deepStrictEqual(r.daily.map((d) => d.engagement), [40, 0, 0, 0, 0, 125, 11]);
+  assert.deepStrictEqual(r.top.map((p) => p.id), ['a', 'c', 'b']);
+  assert.strictEqual(r.truncated, false);
+});
+
+test('HTTP: report endpoint and caption templates', async (t) => {
+  const today = new Date().toISOString();
+  mockFetch(t, {
+    '/media': [200, { data: [{ id: 'm1', caption: 'x', timestamp: today, permalink: 'https://ig/p/1', like_count: 7, comments_count: 3 }] }],
+  });
+  const store = tmpStore();
+  const server = createApp({ token: '', store }).listen(0);
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const post = (p, body) => fetch(base + p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
+
+  const ig = await post('/channels', { platform: 'instagram', name: 'IG', accountId: '9', token: 'T' });
+  const report = await fetch(`${base}/channels/${ig.id}/report?days=7&tz=0`).then((r) => r.json());
+  assert.strictEqual(report.totals.engagement, 10);
+  assert.strictEqual(report.daily.length, 7);
+  assert.strictEqual(report.truncated, false);
+
+  const tpl = await post('/templates', { name: 'Flash sale', text: '🔥 {sản phẩm} chỉ còn {giá}!' });
+  assert.ok(tpl.id);
+  assert.strictEqual((await fetch(base + '/templates').then((r) => r.json())).templates.length, 1);
+  assert.ok((await post('/templates', { name: 'x' })).error);
+  await fetch(`${base}/templates/${tpl.id}`, { method: 'DELETE' });
+  assert.strictEqual((await fetch(base + '/templates').then((r) => r.json())).templates.length, 0);
+});

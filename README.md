@@ -21,6 +21,9 @@ Bảng điều khiển web cho nhiều điện thoại Android ảo. Mỗi máy 
   - Hàng đợi có trạng thái từng bài; bài lỗi bấm "Thử lại"
   - Xem lượt thích, bình luận, chia sẻ (TikTok có thêm lượt xem) của 10 bài gần nhất
   - Đọc và trả lời bình luận Facebook/Instagram ngay trên panel
+  - **Lịch đăng** dạng tháng: thấy mọi bài theo ngày, màu theo trạng thái; bấm 1 ngày để đặt giờ đăng
+  - **Báo cáo 7 ngày**: tổng bài, tương tác, trung bình/bài, biểu đồ tương tác theo ngày, top 3 bài
+  - **Mẫu caption** có chỗ trống `{sản phẩm}`, `{giá}`...: chọn mẫu là panel hỏi từng chỗ rồi điền vào bài
 
 ## Chạy nhanh
 
