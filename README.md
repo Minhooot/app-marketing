@@ -27,7 +27,11 @@ Bảng điều khiển web cho nhiều điện thoại Android ảo. Mỗi máy 
 
 ## Chạy thử ngay (chế độ DEMO, không cần token)
 
-Cần cài [Node.js](https://nodejs.org/) bản LTS. Sau đó, trong thư mục code:
+Cần cài [Node.js](https://nodejs.org/) bản LTS.
+
+**Windows:** bấm đúp file `chay-demo.bat` trong thư mục code: tự cài, tự chạy, tự mở trình duyệt.
+
+**Mac/Linux** (hoặc chạy tay): trong thư mục code:
 
 ```bash
 npm install
