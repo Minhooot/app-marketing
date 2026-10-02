@@ -39,7 +39,17 @@ npm install
 npm start                 # http://127.0.0.1:8080
 ```
 
-Mở dashboard, dán `127.0.0.1:5555 ... 127.0.0.1:5559` vào ô "Kết nối máy ảo" rồi bấm **Kết nối**.
+Hoặc chạy `ADB_CONNECT=127.0.0.1:5555-5559 npm start` để panel tự kết nối mọi máy (và tự nối lại khi container khởi động lại). Không dùng biến này thì mở dashboard, dán `127.0.0.1:5555 ... 127.0.0.1:5559` vào ô "Kết nối máy ảo" rồi bấm **Kết nối**.
+
+### Chạy 20 máy
+
+```bash
+node scripts/gen-compose.js 20
+docker compose up -d
+ADB_CONNECT=127.0.0.1:5555-5574 npm start
+```
+
+Mỗi máy Redroid cần khoảng 2–4 GB RAM, nên 20 máy cần tầm **40–80 GB RAM** cộng thêm phần cho hệ điều hành. Nên bật thử 5 máy, đo bằng `docker stats` khi đang mở app thật, rồi mới tăng lên 20.
 
 Panel cũng điều khiển được emulator Android Studio hoặc điện thoại thật cắm USB, miễn là `adb devices` thấy máy đó.
 
@@ -100,6 +110,7 @@ Lưu ý:
 | `PANEL_TOKEN` | (trống) | Token bảo vệ API, bắt buộc khi `HOST` không phải localhost |
 | `ADB_PATH` | `adb` | Đường dẫn tới adb |
 | `ADB_TIMEOUT_MS` | `30000` | Timeout mỗi lệnh adb |
+| `ADB_CONNECT` | (trống) | Tự kết nối các máy khi khởi động và mỗi 60 giây, ví dụ `127.0.0.1:5555-5574` |
 | `DB_FILE` | `state/db.json` | File lưu nhóm, kênh, hàng đợi bài |
 | `META_GRAPH_VERSION` | `v24.0` | Phiên bản Graph API của Meta |
 

@@ -38,3 +38,224 @@ services:
       - androidboot.redroid_height=1280
       - androidboot.redroid_dpi=320
       - androidboot.redroid_gpu_mode=guest
+  phone004:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5558:5555"
+    volumes:
+      - ./data/phone004:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone005:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5559:5555"
+    volumes:
+      - ./data/phone005:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone006:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5560:5555"
+    volumes:
+      - ./data/phone006:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone007:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5561:5555"
+    volumes:
+      - ./data/phone007:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone008:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5562:5555"
+    volumes:
+      - ./data/phone008:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone009:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5563:5555"
+    volumes:
+      - ./data/phone009:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone010:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5564:5555"
+    volumes:
+      - ./data/phone010:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone011:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5565:5555"
+    volumes:
+      - ./data/phone011:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone012:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5566:5555"
+    volumes:
+      - ./data/phone012:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone013:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5567:5555"
+    volumes:
+      - ./data/phone013:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone014:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5568:5555"
+    volumes:
+      - ./data/phone014:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone015:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5569:5555"
+    volumes:
+      - ./data/phone015:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone016:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5570:5555"
+    volumes:
+      - ./data/phone016:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone017:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5571:5555"
+    volumes:
+      - ./data/phone017:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone018:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5572:5555"
+    volumes:
+      - ./data/phone018:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone019:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5573:5555"
+    volumes:
+      - ./data/phone019:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest
+  phone020:
+    image: redroid/redroid:12.0.0_64only-latest
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5574:5555"
+    volumes:
+      - ./data/phone020:/data
+    command:
+      - androidboot.redroid_width=720
+      - androidboot.redroid_height=1280
+      - androidboot.redroid_dpi=320
+      - androidboot.redroid_gpu_mode=guest

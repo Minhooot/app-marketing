@@ -102,3 +102,13 @@ test('reads GSF Android ID for Play Store registration', async () => {
   assert.strictEqual(await adb.gsfAndroidId('p1'), '3912345678901234567');
   assert.deepStrictEqual(calls()[0], ['-s', 'p1', 'root']);
 });
+
+test('expandAddresses turns port ranges into addresses', () => {
+  const list = adb.expandAddresses('127.0.0.1:5555-5574, 10.0.0.2:5555');
+  assert.strictEqual(list.length, 21);
+  assert.strictEqual(list[0], '127.0.0.1:5555');
+  assert.strictEqual(list[19], '127.0.0.1:5574');
+  assert.strictEqual(list[20], '10.0.0.2:5555');
+  assert.deepStrictEqual(adb.expandAddresses(''), []);
+  assert.throws(() => adb.expandAddresses('127.0.0.1:5574-5555'), /Invalid port range/);
+});

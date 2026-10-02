@@ -98,6 +98,15 @@ if (require.main === module) {
   }
   const store = new Store();
   startScheduler(store);
+
+  // ADB_CONNECT=127.0.0.1:5555-5574 keeps every phone connected, including
+  // after a container restart (adb drops the connection when it goes away).
+  const autoConnect = adb.expandAddresses(process.env.ADB_CONNECT);
+  if (autoConnect.length) {
+    const connectAll = () => Promise.allSettled(autoConnect.map((a) => adb.connect(a)));
+    connectAll().then(() => console.log(`Auto-connect: ${autoConnect.length} addresses`));
+    setInterval(connectAll, 60000).unref();
+  }
   createApp({ store }).listen(port, host, () => console.log(`Phone farm panel: http://${host}:${port}`));
 }
 
