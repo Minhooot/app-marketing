@@ -64,6 +64,7 @@
       <div class="row"><input id="pkg" placeholder="com.android.chrome"></div>
       <div class="row"><button data-go="launch">Mở app</button><button data-go="stop">Tắt app</button></div>
       <div class="row"><input type="file" id="apk" accept=".apk"><button id="install">Cài APK</button></div>
+      <div class="row"><button id="gsf">Lấy GSF ID (đăng ký CH Play)</button></div>
     </section>
     <section>
       <h2>Nhật ký</h2>
@@ -199,6 +200,15 @@ $('install').onclick = async () => {
       { method: 'POST', body: file, headers: { 'content-type': 'application/octet-stream' } });
     report('install', data.results);
   } catch (e) { log(`install: ${e.message}`); }
+};
+
+$('gsf').onclick = async () => {
+  if (!selected.size) return log('Chưa chọn thiết bị nào');
+  for (const s of selected) {
+    try { const r = await api(`/api/devices/${encodeURIComponent(s)}/gsf-id`); log(`${s} GSF ID: ${r.gsfId}`); }
+    catch (e) { log(`${s}: ${e.message}`); }
+  }
+  log('Dán từng ID vào https://www.google.com/android/uncertified rồi khởi động lại máy');
 };
 
 loadDevices();

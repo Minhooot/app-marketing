@@ -37,6 +37,26 @@ Mở dashboard, dán `127.0.0.1:5555 ... 127.0.0.1:5559` vào ô "Kết nối m�
 
 Panel cũng điều khiển được emulator Android Studio hoặc điện thoại thật cắm USB, miễn là `adb devices` thấy máy đó.
 
+### Có CH Play + Chrome trên từng máy
+
+Image Redroid gốc **không có** Google Play. Dùng [redroid-script](https://github.com/ayasa520/redroid-script) để build image có MindTheGapps (cờ `-mtg`), rồi trỏ compose sang image đó:
+
+```bash
+git clone https://github.com/ayasa520/redroid-script && cd redroid-script
+python3 redroid.py -a 12.0.0_64only -mtg          # in ra tên image vừa build
+cd - && node scripts/gen-compose.js 5 <tên-image-vừa-build>
+docker compose up -d
+```
+
+Máy chạy GApps tự build là máy **chưa được Google chứng nhận**, nên CH Play sẽ không đăng nhập được cho tới khi đăng ký:
+
+1. Chọn các máy trên dashboard, bấm **Lấy GSF ID**
+2. Dán từng ID vào <https://www.google.com/android/uncertified> (đăng nhập bằng tài khoản Google của anh)
+3. Đợi vài phút, khởi động lại máy rồi mở CH Play và đăng nhập
+4. Cài Chrome từ CH Play, hoặc bấm **Cài APK** cho nhiều máy cùng lúc
+
+Mỗi máy có volume `data/phoneXXX` riêng, nên tài khoản và app đã đăng nhập vẫn còn sau khi khởi động lại.
+
 ### Truy cập từ xa
 
 Mặc định panel chỉ nghe ở `127.0.0.1`. Muốn mở ra ngoài thì **bắt buộc** đặt token:
@@ -62,7 +82,7 @@ Nên đặt panel sau HTTPS (Nginx/Caddy) hoặc VPN. Cổng ADB 5555+ của cá
 
 - **Gõ tiếng Việt có dấu**: `adb input text` chỉ nhận ASCII. Muốn gõ có dấu thì cài [ADBKeyboard](https://github.com/senzhk/ADBKeyBoard) lên máy rồi gửi broadcast.
 - **Màn hình** hiện lấy bằng ảnh chụp định kỳ (`screencap`). Muốn mượt kiểu xem video thì nâng lên stream bằng scrcpy hoặc ws-scrcpy.
-- **Google Play** không có sẵn trong image Redroid gốc; cài app bằng APK hoặc dùng image có GApps.
+- **Google Play**: xem mục "Có CH Play + Chrome" ở trên.
 - **Sức chứa**: RAM và CPU mỗi máy tùy app chạy bên trong; nên test với vài máy trước rồi mới nhân lên.
 - Kịch bản tự động (macro, lên lịch), quản lý proxy theo từng máy, nhóm máy: để cho các phiên bản sau.
 

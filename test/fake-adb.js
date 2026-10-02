@@ -25,10 +25,14 @@ switch (rest[0]) {
         'emulator-5554          offline transport_id:2\n\n',
     );
     break;
+  case 'root':
+    process.stdout.write('adbd is already running as root\n');
+    break;
   case 'connect':
     process.stdout.write(`connected to ${rest[1]}\n`);
     break;
   case 'shell':
+    if (rest[1].startsWith('sqlite3')) process.stdout.write('3912345678901234567\n');
     if (rest[1] === 'wm size') {
       process.stdout.write(serial === 'big-phone' ? 'Physical size: 1440x2560\nOverride size: 1080x1920\n' : 'Physical size: 720x1280\n');
     }

@@ -57,7 +57,21 @@ async function screenSize(serial) {
   return { width: Number(w), height: Number(h) };
 }
 
+// Google Services Framework ID, needed to register an uncertified (e.g. Redroid
+// + GApps) device at https://www.google.com/android/uncertified so Play works.
+async function gsfAndroidId(serial) {
+  await run(['-s', serial, 'root']);
+  const out = await shell(
+    serial,
+    `sqlite3 /data/data/com.google.android.gsf/databases/gservices.db "select value from main where name = 'android_id';"`,
+  );
+  const id = out.trim();
+  if (!/^\d+$/.test(id)) throw new Error(`GSF ID not found (GApps installed and booted once?): ${id}`);
+  return id;
+}
+
 module.exports = {
+  gsfAndroidId,
   run,
   shell,
   shQuote,

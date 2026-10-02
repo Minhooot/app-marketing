@@ -96,3 +96,8 @@ test('HTTP API: token, broadcast and install', async (t) => {
   const png = await fetch(`${base}/api/devices/p1/screen.png?token=secret`);
   assert.strictEqual(png.headers.get('content-type'), 'image/png');
 });
+
+test('reads GSF Android ID for Play Store registration', async () => {
+  assert.strictEqual(await adb.gsfAndroidId('p1'), '3912345678901234567');
+  assert.deepStrictEqual(calls()[0], ['-s', 'p1', 'root']);
+});

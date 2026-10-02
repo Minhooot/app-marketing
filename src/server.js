@@ -46,6 +46,10 @@ function createApp({ token = process.env.PANEL_TOKEN } = {}) {
     res.set('Cache-Control', 'no-store').type('png').send(png);
   }));
 
+  app.get('/api/devices/:serial/gsf-id', wrap(async (req, res) => {
+    res.json({ serial: req.params.serial, gsfId: await adb.gsfAndroidId(req.params.serial) });
+  }));
+
   app.post('/api/broadcast', wrap(async (req, res) => {
     const { serials, action, params } = req.body;
     res.json({ results: await broadcast(serials, action, params) });
