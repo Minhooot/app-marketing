@@ -11,6 +11,7 @@ const FAKE = path.join(__dirname, 'fake-adb.js');
 fs.chmodSync(FAKE, 0o755);
 process.env.ADB_PATH = FAKE;
 process.env.FAKE_ADB_LOG = LOG;
+process.env.DB_FILE = path.join(path.dirname(LOG), 'db.json');
 
 const adb = require('../src/adb');
 const { broadcast, clearSizeCache } = require('../src/actions');
@@ -100,4 +101,32 @@ test('HTTP API: token, broadcast and install', async (t) => {
 test('reads GSF Android ID for Play Store registration', async () => {
   assert.strictEqual(await adb.gsfAndroidId('p1'), '3912345678901234567');
   assert.deepStrictEqual(calls()[0], ['-s', 'p1', 'root']);
+});
+
+test('expandAddresses turns port ranges into addresses', () => {
+  const list = adb.expandAddresses('127.0.0.1:5555-5574, 10.0.0.2:5555');
+  assert.strictEqual(list.length, 21);
+  assert.strictEqual(list[0], '127.0.0.1:5555');
+  assert.strictEqual(list[19], '127.0.0.1:5574');
+  assert.strictEqual(list[20], '10.0.0.2:5555');
+  assert.deepStrictEqual(adb.expandAddresses(''), []);
+  assert.throws(() => adb.expandAddresses('127.0.0.1:5574-5555'), /Invalid port range/);
+});
+
+test('Vietnamese text goes through ADBKeyboard, enabling it when needed', async () => {
+  await broadcast(['p1'], 'text', { text: 'Xin chào' });
+  const shellCmds = calls().map((c) => c[3]);
+  assert.deepStrictEqual(shellCmds.slice(-3), [
+    'ime enable com.android.adbkeyboard/.AdbIME',
+    'ime set com.android.adbkeyboard/.AdbIME',
+    `am broadcast -a ADB_INPUT_B64 --es msg '${Buffer.from('Xin chào').toString('base64')}'`,
+  ]);
+
+  fs.rmSync(LOG, { force: true });
+  await broadcast(['kb-active'], 'text', { text: 'Đẹp' });
+  assert.ok(!calls().some((c) => c[3].startsWith('ime ')), 'no IME switch when already active');
+
+  const [r] = await broadcast(['no-kb'], 'text', { text: 'Đẹp' });
+  assert.strictEqual(r.ok, false);
+  assert.match(r.error, /ADBKeyboard/);
 });

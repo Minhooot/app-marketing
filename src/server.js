@@ -7,8 +7,11 @@ const crypto = require('node:crypto');
 const express = require('express');
 const adb = require('./adb');
 const { broadcast, KEYCODES } = require('./actions');
+const { Store } = require('./store');
+const { createRoutes } = require('./routes');
+const { startScheduler } = require('./scheduler');
 
-function createApp({ token = process.env.PANEL_TOKEN } = {}) {
+function createApp({ token = process.env.PANEL_TOKEN, store = new Store() } = {}) {
   const app = express();
   app.use(express.json({ limit: '1mb' }));
 
@@ -80,6 +83,8 @@ function createApp({ token = process.env.PANEL_TOKEN } = {}) {
     }),
   );
 
+  app.use('/api', createRoutes(store, wrap));
+
   app.use(express.static(path.join(__dirname, '..', 'public')));
   return app;
 }
@@ -91,7 +96,23 @@ if (require.main === module) {
     console.error('Refusing to listen on a public interface without PANEL_TOKEN set.');
     process.exit(1);
   }
-  createApp().listen(port, host, () => console.log(`Phone farm panel: http://${host}:${port}`));
+  if (process.argv.includes('--demo')) process.env.DEMO = '1';
+  if (process.env.DEMO === '1') {
+    require('./demo').enableDemo();
+    console.log('DEMO mode: Meta/TikTok calls return sample data, nothing is posted for real.');
+  }
+  const store = new Store();
+  startScheduler(store);
+
+  // ADB_CONNECT=127.0.0.1:5555-5574 keeps every phone connected, including
+  // after a container restart (adb drops the connection when it goes away).
+  const autoConnect = adb.expandAddresses(process.env.ADB_CONNECT);
+  if (autoConnect.length) {
+    const connectAll = () => Promise.allSettled(autoConnect.map((a) => adb.connect(a)));
+    connectAll().then(() => console.log(`Auto-connect: ${autoConnect.length} addresses`));
+    setInterval(connectAll, 60000).unref();
+  }
+  createApp({ store }).listen(port, host, () => console.log(`Phone farm panel: http://${host}:${port}`));
 }
 
 module.exports = { createApp };

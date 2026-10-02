@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kênh MXH</title>
+<style>
+  :root { --bg:#0f1115; --panel:#181b22; --line:#2a2f3a; --text:#e6e8ee; --muted:#8a91a0; --accent:#4f8cff; --ok:#2fbf71; --warn:#e3a33b; --err:#ef5a5a; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  header { display:flex; gap:12px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; margin:0; }
+  header a { color:var(--accent); margin-left:auto; }
+  main { display:grid; grid-template-columns: minmax(320px, 420px) 1fr; gap:16px; padding:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:16px; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:0 0 10px; }
+  input, button, textarea, select { font:inherit; color:var(--text); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:7px 10px; }
+  input, textarea, select { width:100%; }
+  textarea { resize:vertical; }
+  button { cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  label { display:block; font-size:12px; color:var(--muted); margin:8px 0 3px; }
+  .row { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; align-items:center; }
+  .row > * { flex:1; }
+  .row > button { flex:0 0 auto; }
+  .chip { display:inline-flex; align-items:center; gap:6px; background:var(--bg); border:1px solid var(--line); border-radius:999px; padding:4px 10px; margin:0 6px 6px 0; font-size:13px; }
+  .chip input { width:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:500; }
+  td.num, th.num { text-align:right; font-variant-numeric: tabular-nums; }
+  .st { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+  .st.published { color:var(--ok); } .st.failed { color:var(--err); } .st.scheduled, .st.publishing { color:var(--warn); }
+  .muted { color:var(--muted); font-size:12px; }
+  .clip { max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #toast { position:fixed; bottom:16px; right:16px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 14px; display:none; max-width:420px; }
+  .comment { border-bottom:1px solid var(--line); padding:8px 0; }
+  .cal-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .cal-head b { flex:1; text-align:center; }
+  .cal { display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; }
+  .cal .dow { font-size:11px; color:var(--muted); text-align:center; padding:2px 0; }
+  .cal .day { min-height:74px; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:4px; cursor:pointer; overflow:hidden; }
+  .cal .day:hover { border-color:var(--accent); }
+  .cal .day.out { opacity:.4; }
+  .cal .day.today { border-color:var(--accent); }
+  .cal .num-d { font-size:11px; color:var(--muted); }
+  .cal .chip-p { display:block; font-size:11px; line-height:1.3; padding:1px 5px; margin-top:2px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border-left:3px solid currentColor; background:rgba(255,255,255,.04); }
+  .chip-p.published { color:var(--ok); } .chip-p.failed { color:var(--err); } .chip-p.scheduled, .chip-p.publishing { color:var(--warn); }
+  .chip-p span { color:var(--text); }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:8px; margin:10px 0; }
+  .tile { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  .tile .v { font-size:20px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .tile .k { font-size:11px; color:var(--muted); }
+  .chart-wrap { position:relative; }
+  .chart-wrap svg { width:100%; height:auto; display:block; }
+  .tip { position:absolute; pointer-events:none; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font-size:12px; white-space:nowrap; display:none; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } .clip { max-width:180px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>📣 Quản lý kênh MXH</h1>
+  <span class="muted">Dùng API chính chủ của Meta & TikTok</span>
+  <span id="demoBadge" class="st scheduled" style="display:none" title="Dữ liệu mẫu, không đăng thật">DEMO · dữ liệu mẫu</span>
+  <a id="back" href="/">← Bảng điều khiển máy</a>
+</header>
+<main>
+  <div>
+    <div class="card">
+      <h2>Soạn bài</h2>
+      <div id="pickChannels" class="muted">Chưa có kênh nào, thêm kênh ở bên dưới.</div>
+      <label>Mẫu caption</label>
+      <div class="row"><select id="tplSel"></select><button id="tplUse">Dùng</button><button id="tplSave" title="Lưu nội dung hiện tại thành mẫu">Lưu mẫu</button><button id="tplDel">Xóa</button></div>
+      <p class="muted" style="margin:4px 0 0">Đặt chỗ trống trong mẫu bằng ngoặc nhọn, ví dụ: 🔥 {sản phẩm} chỉ còn {giá}!</p>
+      <label>Nội dung</label>
+      <textarea id="text" rows="5" placeholder="Caption / nội dung bài đăng"></textarea>
+      <label>Link (chỉ Facebook)</label>
+      <input id="link" placeholder="https://...">
+      <label>URL ảnh (FB/IG) hoặc video (TikTok), phải truy cập công khai được</label>
+      <input id="mediaUrl" placeholder="https://cdn.../anh.jpg">
+      <label>Quyền riêng tư TikTok</label>
+      <select id="privacy">
+        <option value="">Mặc định (SELF_ONLY nếu app chưa được duyệt)</option>
+        <option>PUBLIC_TO_EVERYONE</option><option>MUTUAL_FOLLOW_FRIENDS</option><option>FOLLOWER_OF_CREATOR</option><option>SELF_ONLY</option>
+      </select>
+      <label>Thời gian đăng (để trống = đăng ngay)</label>
+      <input id="when" type="datetime-local">
+      <div class="row"><button class="primary" id="submit">Lên lịch / Đăng</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Kênh đã kết nối</h2>
+      <div id="channels"></div>
+      <label>Nền tảng</label>
+      <select id="chPlatform"></select>
+      <label>Tên hiển thị</label>
+      <input id="chName" placeholder="Fanpage Shop ABC">
+      <div id="accWrap">
+        <label id="accLabel">Page ID</label>
+        <input id="chAccount">
+      </div>
+      <label>Access token</label>
+      <input id="chToken" type="password" autocomplete="off">
+      <div class="row"><button id="addChannel">Thêm kênh</button></div>
+      <p class="muted" id="tokenHint"></p>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Lịch đăng</h2>
+      <div class="cal-head"><button id="calPrev">‹</button><b id="calTitle"></b><button id="calNext">›</button><button id="calToday">Hôm nay</button></div>
+      <div class="cal" id="cal"></div>
+      <p class="muted" style="margin:6px 0 0">Bấm vào một ngày để đặt giờ đăng cho bài đang soạn.</p>
+    </div>
+
+    <div class="card">
+      <h2>Hàng đợi bài đăng</h2>
+      <table><thead><tr><th>Giờ đăng</th><th>Kênh</th><th>Nội dung</th><th>Trạng thái</th><th></th></tr></thead><tbody id="queue"></tbody></table>
+    </div>
+
+    <div class="card">
+      <h2>Hiệu quả bài gần đây</h2>
+      <div class="row"><select id="statsChannel"></select><button id="loadStats">Tải số liệu</button><button id="loadReport">Báo cáo 7 ngày</button></div>
+      <div id="report"></div>
+      <table style="margin-top:10px"><thead><tr><th>Bài</th><th class="num">Xem</th><th class="num">Thích</th><th class="num">Bình luận</th><th class="num">Chia sẻ</th><th></th></tr></thead><tbody id="stats"></tbody></table>
+      <div id="commentsBox" style="margin-top:12px"></div>
+    </div>
+  </div>
+</main>
+<div id="toast"></div>
+<script>
+const token = new URLSearchParams(location.search).get('token') || '';
+const $ = (id) => document.getElementById(id);
+if (token) $('back').href += `?token=${encodeURIComponent(token)}`;
+
+const HINTS = {
+  facebook: ['Page ID', 'Page access token, quyền: pages_manage_posts, pages_read_engagement, pages_manage_engagement.'],
+  instagram: ['Instagram Business Account ID', 'Page access token của Page gắn với IG, quyền: instagram_basic, instagram_content_publish, instagram_manage_comments.'],
+  tiktok: [null, 'User access token từ TikTok Login Kit, scope: video.publish, video.list. TikTok chưa có API đọc/trả lời bình luận.'],
+};
+const NAMES = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok' };
+const STATUS = { scheduled: 'Chờ đăng', publishing: 'Đang đăng', published: 'Đã đăng', failed: 'Lỗi' };
+let channels = [];
+
+function toast(msg, isErr) {
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  t.style.borderColor = isErr ? 'var(--err)' : 'var(--line)';
+  clearTimeout(toast.t); toast.t = setTimeout(() => (t.style.display = 'none'), 5000);
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch('/api' + path, { ...opts, headers: { 'content-type': 'application/json', 'x-panel-token': token } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+// Builds DOM from [tag, props, ...children]; strings become text nodes (never HTML).
+function h(tag, props = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) k.startsWith('on') ? (el[k] = v) : k === 'class' ? (el.className = v) : el.setAttribute(k, v);
+  for (const k of kids.flat()) if (k !== null && k !== undefined) el.append(k instanceof Node ? k : String(k));
+  return el;
+}
+
+const fmt = (iso) => new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+const num = (n) => (n === null || n === undefined ? '—' : Number(n).toLocaleString('vi-VN'));
+const chName = (id) => { const c = channels.find((x) => x.id === id); return c ? `${NAMES[c.platform]} · ${c.name}` : '(đã xóa)'; };
+
+function updatePlatformForm() {
+  const [acc, hint] = HINTS[$('chPlatform').value];
+  $('accWrap').style.display = acc ? '' : 'none';
+  $('accLabel').textContent = acc || '';
+  $('tokenHint').textContent = hint;
+}
+
+async function loadChannels() {
+  const data = await api('/channels');
+  channels = data.channels;
+  $('demoBadge').style.display = data.demo ? '' : 'none';
+  if (!$('chPlatform').options.length) {
+    data.platforms.forEach((p) => $('chPlatform').append(h('option', { value: p }, NAMES[p])));
+    updatePlatformForm();
+  }
+  $('channels').replaceChildren(...(channels.length ? channels.map((c) =>
+    h('div', { class: 'row' },
+      h('span', {}, `${NAMES[c.platform]} · ${c.name}`, h('span', { class: 'muted' }, c.accountId !== 'me' ? `  #${c.accountId}` : '')),
+      h('button', { onclick: async () => {
+        if (!confirm(`Xóa kênh "${c.name}"?`)) return;
+        try { await api(`/channels/${c.id}`, { method: 'DELETE' }); refresh(); } catch (e) { toast(e.message, true); }
+      } }, 'Xóa'))) : [h('p', { class: 'muted' }, 'Chưa có kênh.')]));
+
+  $('pickChannels').replaceChildren(...(channels.length ? channels.map((c) =>
+    h('label', { class: 'chip' }, h('input', { type: 'checkbox', value: c.id }), `${NAMES[c.platform]} · ${c.name}`))
+    : ['Chưa có kênh nào, thêm kênh ở bên dưới.']));
+
+  const cur = $('statsChannel').value;
+  $('statsChannel').replaceChildren(...channels.map((c) => h('option', { value: c.id }, `${NAMES[c.platform]} · ${c.name}`)));
+  if (channels.some((c) => c.id === cur)) $('statsChannel').value = cur;
+}
+
+let allPosts = [];
+async function loadQueue() {
+  const { posts } = await api('/posts');
+  allPosts = posts;
+  renderCalendar();
+  $('queue').replaceChildren(...(posts.length ? posts.map((p) => h('tr', {},
+    h('td', {}, fmt(p.scheduledAt)),
+    h('td', {}, chName(p.channelId)),
+    h('td', { class: 'clip', title: p.text }, p.text || p.link || p.mediaUrl),
+    h('td', {}, h('span', { class: `st ${p.status}`, title: p.error || '' }, STATUS[p.status] || p.status), p.error ? h('div', { class: 'muted' }, p.error) : null),
+    h('td', {},
+      p.status === 'failed' ? h('button', { onclick: () => act(`/posts/${p.id}/retry`, 'POST') }, 'Thử lại') : null,
+      p.status !== 'publishing' ? h('button', { onclick: () => confirm('Xóa bài khỏi hàng đợi?') && act(`/posts/${p.id}`, 'DELETE') }, 'Xóa') : null),
+  )) : [h('tr', {}, h('td', { colspan: 5, class: 'muted' }, 'Chưa có bài nào.'))]));
+}
+
+async function act(path, method) {
+  try { await api(path, { method }); await loadQueue(); } catch (e) { toast(e.message, true); }
+}
+
+async function loadStats() {
+  const id = $('statsChannel').value;
+  if (!id) return;
+  $('commentsBox').replaceChildren();
+  $('stats').replaceChildren(h('tr', {}, h('td', { colspan: 6, class: 'muted' }, 'Đang tải...')));
+  try {
+    const { posts } = await api(`/channels/${id}/posts`);
+    const canComment = channels.find((c) => c.id === id)?.platform !== 'tiktok';
+    $('stats').replaceChildren(...(posts.length ? posts.map((p) => h('tr', {},
+      h('td', { class: 'clip' }, h('a', { href: p.url, target: '_blank', rel: 'noopener', style: 'color:inherit' }, p.text || '(không có chữ)'), h('div', { class: 'muted' }, fmt(p.createdAt))),
+      h('td', { class: 'num' }, num(p.views)), h('td', { class: 'num' }, num(p.likes)),
+      h('td', { class: 'num' }, num(p.comments)), h('td', { class: 'num' }, num(p.shares)),
+      h('td', {}, canComment ? h('button', { onclick: () => loadComments(id, p) }, 'Bình luận') : null),
+    )) : [h('tr', {}, h('td', { colspan: 6, class: 'muted' }, 'Chưa có bài.'))]));
+  } catch (e) {
+    $('stats').replaceChildren(h('tr', {}, h('td', { colspan: 6, style: 'color:var(--err)' }, e.message)));
+  }
+}
+
+async function loadComments(channelId, post) {
+  const box = $('commentsBox');
+  box.replaceChildren(h('p', { class: 'muted' }, 'Đang tải bình luận...'));
+  try {
+    const { comments } = await api(`/channels/${channelId}/posts/${encodeURIComponent(post.id)}/comments`);
+    box.replaceChildren(h('h2', {}, `Bình luận: ${(post.text || '').slice(0, 60)}`),
+      ...(comments.length ? comments.map((c) => {
+        const input = h('input', { placeholder: 'Trả lời với tư cách trang...' });
+        return h('div', { class: 'comment' },
+          h('b', {}, c.author || 'Ẩn danh'), h('span', { class: 'muted' }, `  ${fmt(c.createdAt)}`),
+          h('div', {}, c.text),
+          h('div', { class: 'row' }, input, h('button', { onclick: async () => {
+            if (!input.value.trim()) return;
+            try {
+              await api(`/channels/${channelId}/comments/${encodeURIComponent(c.id)}/reply`, { method: 'POST', body: JSON.stringify({ message: input.value }) });
+              input.value = ''; toast('Đã trả lời');
+            } catch (e) { toast(e.message, true); }
+          } }, 'Trả lời')));
+      }) : [h('p', { class: 'muted' }, 'Chưa có bình luận.')]));
+  } catch (e) { box.replaceChildren(h('p', { style: 'color:var(--err)' }, e.message)); }
+}
+
+$('chPlatform').onchange = updatePlatformForm;
+$('addChannel').onclick = async () => {
+  try {
+    await api('/channels', { method: 'POST', body: JSON.stringify({
+      platform: $('chPlatform').value, name: $('chName').value, accountId: $('chAccount').value, token: $('chToken').value,
+    }) });
+    $('chName').value = $('chAccount').value = $('chToken').value = '';
+    toast('Đã thêm kênh'); refresh();
+  } catch (e) { toast(e.message, true); }
+};
+$('submit').onclick = async () => {
+  const channelIds = [...document.querySelectorAll('#pickChannels input:checked')].map((i) => i.value);
+  const when = $('when').value ? new Date($('when').value).toISOString() : undefined;
+  try {
+    const { posts } = await api('/posts', { method: 'POST', body: JSON.stringify({
+      channelIds, text: $('text').value, link: $('link').value, mediaUrl: $('mediaUrl').value,
+      privacy: $('privacy').value || undefined, scheduledAt: when,
+    }) });
+    toast(`Đã xếp ${posts.length} bài vào hàng đợi`);
+    $('text').value = $('link').value = $('mediaUrl').value = $('when').value = '';
+    loadQueue();
+  } catch (e) { toast(e.message, true); }
+};
+$('loadStats').onclick = loadStats;
+
+// ---------- Calendar ----------
+let calMonth = new Date(); calMonth.setDate(1);
+const pad = (n) => String(n).padStart(2, '0');
+const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+function renderCalendar() {
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  $('calTitle').textContent = `Tháng ${m + 1}/${y}`;
+  const byDay = {};
+  for (const p of allPosts) (byDay[dayKey(new Date(p.scheduledAt))] ||= []).push(p);
+  // Weeks start on Monday, as on Vietnamese calendars.
+  const first = new Date(y, m, 1);
+  const start = new Date(y, m, 1 - ((first.getDay() + 6) % 7));
+  const cells = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => h('div', { class: 'dow' }, d));
+  const todayKey = dayKey(new Date());
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const key = dayKey(d);
+    const posts = (byDay[key] || []).sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+    const shown = posts.slice(0, 3).map((p) => {
+      const t = new Date(p.scheduledAt);
+      return h('span', { class: `chip-p ${p.status}`, title: `${STATUS[p.status]} · ${chName(p.channelId)}\n${p.text || p.link || p.mediaUrl}` },
+        h('span', {}, `${pad(t.getHours())}:${pad(t.getMinutes())} ${p.text || p.link || ''}`));
+    });
+    if (posts.length > 3) shown.push(h('span', { class: 'muted', style: 'font-size:11px' }, `+${posts.length - 3} bài`));
+    cells.push(h('div', {
+      class: `day${d.getMonth() !== m ? ' out' : ''}${key === todayKey ? ' today' : ''}`,
+      onclick: () => {
+        const cur = $('when').value ? $('when').value.slice(11, 16) : '09:00';
+        $('when').value = `${key}T${cur}`;
+        $('when').focus();
+        toast(`Đã chọn ngày ${d.getDate()}/${m + 1}, chỉnh giờ rồi bấm Lên lịch`);
+      },
+    }, h('div', { class: 'num-d' }, d.getDate()), ...shown));
+  }
+  $('cal').replaceChildren(...cells);
+}
+$('calPrev').onclick = () => { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); };
+$('calNext').onclick = () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); };
+$('calToday').onclick = () => { calMonth = new Date(); calMonth.setDate(1); renderCalendar(); };
+
+// ---------- Caption templates ----------
+let templates = [];
+async function loadTemplates() {
+  templates = (await api('/templates')).templates;
+  $('tplSel').replaceChildren(h('option', { value: '' }, templates.length ? '— Chọn mẫu —' : '— Chưa có mẫu —'),
+    ...templates.map((t) => h('option', { value: t.id }, t.name)));
+}
+$('tplUse').onclick = () => {
+  const t = templates.find((x) => x.id === $('tplSel').value);
+  if (!t) return toast('Chọn một mẫu trước', true);
+  let text = t.text;
+  for (const name of [...new Set([...t.text.matchAll(/\{([^{}]{1,30})\}/g)].map((m) => m[1]))]) {
+    const v = prompt(`Điền "${name}":`);
+    if (v === null) return;
+    text = text.split(`{${name}}`).join(v);
+  }
+  $('text').value = text;
+};
+$('tplSave').onclick = async () => {
+  if (!$('text').value.trim()) return toast('Soạn nội dung trước rồi lưu thành mẫu', true);
+  const name = prompt('Tên mẫu:');
+  if (!name) return;
+  try { const t = await api('/templates', { method: 'POST', body: JSON.stringify({ name, text: $('text').value }) }); await loadTemplates(); $('tplSel').value = t.id; toast('Đã lưu mẫu'); }
+  catch (e) { toast(e.message, true); }
+};
+$('tplDel').onclick = async () => {
+  const t = templates.find((x) => x.id === $('tplSel').value);
+  if (!t || !confirm(`Xóa mẫu "${t.name}"?`)) return;
+  try { await api(`/templates/${t.id}`, { method: 'DELETE' }); await loadTemplates(); } catch (e) { toast(e.message, true); }
+};
+
+// ---------- Weekly report ----------
+const SVGNS = 'http://www.w3.org/2000/svg';
+function s(tag, attrs = {}, text) {
+  const el = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  if (text !== undefined) el.textContent = text;
+  return el;
+}
+
+// Single-series bar chart: engagement per day. One hue, thin bars with a 4px
+// rounded top anchored to the baseline, recessive grid, hover tooltip.
+function engagementChart(daily) {
+  const W = 640, H = 220, L = 44, R = 8, T = 16, B = 26;
+  const max = Math.max(1, ...daily.map((d) => d.engagement));
+  const step = Math.pow(10, Math.floor(Math.log10(max)));
+  const top = Math.ceil(max / step) * step;
+  const y = (v) => T + (H - T - B) * (1 - v / top);
+  const slot = (W - L - R) / daily.length;
+  const bw = Math.min(36, slot * 0.55);
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Tổng tương tác theo ngày' });
+  for (const v of [0, top / 2, top]) {
+    svg.append(s('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: 'var(--line)', 'stroke-width': 1 }));
+    svg.append(s('text', { x: L - 6, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 11, fill: 'var(--muted)' }, num(v)));
+  }
+  const wrap = h('div', { class: 'chart-wrap' });
+  const tip = h('div', { class: 'tip' });
+  const peak = daily.reduce((a, b) => (b.engagement > a.engagement ? b : a), daily[0]);
+  daily.forEach((d, i) => {
+    const cx = L + slot * i + slot / 2;
+    const x = cx - bw / 2, y0 = y(0), y1 = y(d.engagement), r = Math.min(4, (y0 - y1) / 2);
+    const [, mm, dd] = d.date.split('-');
+    if (d.engagement > 0) {
+      svg.append(s('path', {
+        d: `M${x},${y0} V${y1 + r} Q${x},${y1} ${x + r},${y1} H${x + bw - r} Q${x + bw},${y1} ${x + bw},${y1 + r} V${y0} Z`,
+        fill: 'var(--accent)',
+      }));
+    }
+    svg.append(s('text', { x: cx, y: H - 8, 'text-anchor': 'middle', 'font-size': 11, fill: 'var(--muted)' }, `${dd}/${mm}`));
+    if (d === peak && d.engagement > 0) {
+      svg.append(s('text', { x: cx, y: y1 - 5, 'text-anchor': 'middle', 'font-size': 11, fill: 'var(--text)' }, num(d.engagement)));
+    }
+    // Hit target spans the whole day column, larger than the bar.
+    const hit = s('rect', { x: L + slot * i, y: T, width: slot, height: H - T - B, fill: 'transparent' });
+    hit.addEventListener('mousemove', (e) => {
+      tip.textContent = `${dd}/${mm}: ${num(d.engagement)} tương tác · ${d.posts} bài`;
+      const box = wrap.getBoundingClientRect();
+      tip.style.display = 'block';
+      tip.style.left = `${Math.min(e.clientX - box.left + 12, box.width - tip.offsetWidth)}px`;
+      tip.style.top = `${e.clientY - box.top - 30}px`;
+    });
+    hit.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+    svg.append(hit);
+  });
+  wrap.append(svg, tip);
+  return wrap;
+}
+
+async function loadReport() {
+  const id = $('statsChannel').value;
+  if (!id) return toast('Chưa có kênh nào', true);
+  $('report').replaceChildren(h('p', { class: 'muted' }, 'Đang tổng hợp...'));
+  try {
+    const r = await api(`/channels/${id}/report?days=7&tz=${new Date().getTimezoneOffset()}`);
+    const t = r.totals;
+    const fmtDay = (k) => k.split('-').reverse().slice(0, 2).join('/');
+    const tile = (v, k) => h('div', { class: 'tile' }, h('div', { class: 'v' }, num(v)), h('div', { class: 'k' }, k));
+    $('report').replaceChildren(
+      h('h2', { style: 'margin-top:14px' }, `Báo cáo ${fmtDay(r.from)} – ${fmtDay(r.to)} · ${chName(id)}`),
+      h('div', { class: 'tiles' },
+        tile(t.posts, 'Bài đăng'), tile(t.engagement, 'Tổng tương tác'), tile(t.avgEngagementPerPost, 'TB / bài'),
+        tile(t.likes, 'Thích'), tile(t.comments, 'Bình luận'), t.views !== null ? tile(t.views, 'Lượt xem') : null, t.shares !== null ? tile(t.shares, 'Chia sẻ') : null),
+      engagementChart(r.daily),
+      r.top.length ? h('div', {}, h('h2', { style: 'margin-top:12px' }, 'Top bài tuần'),
+        ...r.top.map((p, i) => h('div', { class: 'row' },
+          h('span', { class: 'clip' }, `${i + 1}. `, h('a', { href: p.url, target: '_blank', rel: 'noopener', style: 'color:inherit' }, p.text || '(không có chữ)')),
+          h('span', { class: 'muted', style: 'flex:0 0 auto' }, `${num(p.engagement)} tương tác`)))) : h('p', { class: 'muted' }, 'Tuần này chưa có bài nào.'),
+      // replaceChildren would print a literal "null", so only spread real nodes.
+      ...(r.truncated ? [h('p', { class: 'muted' }, '⚠️ API chỉ trả về 25 bài gần nhất, nếu tuần này đăng nhiều hơn thì số liệu có thể thiếu.')] : []),
+    );
+  } catch (e) { $('report').replaceChildren(h('p', { style: 'color:var(--err)' }, e.message)); }
+}
+$('loadReport').onclick = loadReport;
+
+async function refresh() {
+  try { await loadChannels(); await loadQueue(); await loadTemplates(); } catch (e) { toast(e.message, true); }
+}
+refresh();
+setInterval(loadQueue, 15000);
+</script>
+</body>
+</html>

@@ -70,7 +70,23 @@ async function gsfAndroidId(serial) {
   return id;
 }
 
+// Expands "127.0.0.1:5555-5574,10.0.0.2:5555" into one address per port.
+function expandAddresses(spec) {
+  return String(spec || '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .flatMap((item) => {
+      const m = item.match(/^(.+):(\d+)(?:-(\d+))?$/);
+      if (!m) throw new Error(`Invalid address "${item}" (expected host:port or host:start-end)`);
+      const [, host, start, end = start] = m;
+      if (Number(end) < Number(start) || Number(end) - Number(start) >= 1000) throw new Error(`Invalid port range in "${item}"`);
+      return Array.from({ length: Number(end) - Number(start) + 1 }, (_, i) => `${host}:${Number(start) + i}`);
+    });
+}
+
 module.exports = {
+  expandAddresses,
   gsfAndroidId,
   run,
   shell,

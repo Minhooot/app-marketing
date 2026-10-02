@@ -37,4 +37,4 @@ for (let i = 0; i < count; i++) {
 const out = path.join(__dirname, '..', 'docker-compose.yml');
 fs.writeFileSync(out, yml);
 console.log(`Wrote ${count} phones to ${out}`);
-console.log(`ADB addresses: 127.0.0.1:5555 .. 127.0.0.1:${5555 + count - 1}`);
+console.log(`Start the panel with: ADB_CONNECT=127.0.0.1:5555-${5555 + count - 1} npm start`);

@@ -5,7 +5,21 @@ const adb = require('./adb');
 const KEYCODES = { home: 3, back: 4, recents: 187, power: 26, enter: 66, delete: 67, volume_up: 24, volume_down: 25 };
 const PACKAGE_RE = /^[a-zA-Z][\w]*(\.[a-zA-Z][\w]*)+$/;
 
+const ADB_KEYBOARD_PKG = 'com.android.adbkeyboard';
+const ADB_KEYBOARD_IME = 'com.android.adbkeyboard/.AdbIME';
+
 const sizeCache = new Map();
+
+async function ensureAdbKeyboard(serial) {
+  const current = (await adb.shell(serial, 'settings get secure default_input_method')).trim();
+  if (current === ADB_KEYBOARD_IME) return;
+  const installed = await adb.shell(serial, `pm list packages ${ADB_KEYBOARD_PKG}`);
+  if (!installed.includes(`package:${ADB_KEYBOARD_PKG}`)) {
+    throw new Error('Gõ có dấu cần cài ADBKeyboard (xem README)');
+  }
+  await adb.shell(serial, `ime enable ${ADB_KEYBOARD_IME}`);
+  await adb.shell(serial, `ime set ${ADB_KEYBOARD_IME}`);
+}
 
 async function sizeOf(serial) {
   if (!sizeCache.has(serial)) sizeCache.set(serial, await adb.screenSize(serial));
@@ -40,7 +54,14 @@ const handlers = {
 
   async text(serial, { text }) {
     if (typeof text !== 'string' || !text) throw new Error('text is required');
-    return adb.shell(serial, `input text ${adb.shQuote(adb.encodeInputText(text))}`);
+    if (/^[\x20-\x7e]*$/.test(text)) {
+      return adb.shell(serial, `input text ${adb.shQuote(adb.encodeInputText(text))}`);
+    }
+    // `input text` cannot type Unicode (Vietnamese diacritics, emoji), so
+    // route it through the ADBKeyboard IME, which accepts base64 broadcasts.
+    await ensureAdbKeyboard(serial);
+    const b64 = Buffer.from(text, 'utf8').toString('base64');
+    return adb.shell(serial, `am broadcast -a ADB_INPUT_B64 --es msg ${adb.shQuote(b64)}`);
   },
 
   async key(serial, { key }) {
